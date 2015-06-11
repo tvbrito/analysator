@@ -24,3 +24,4 @@ from gyrophaseangle import gyrophase_angles_from_file
 from cut3d import cut3d
 from lineout import lineout
 import fit
+from stackplot import stackplot
