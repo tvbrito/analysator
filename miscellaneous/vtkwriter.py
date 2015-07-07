@@ -52,7 +52,6 @@ def write_vtk_file( filename, point_data ):
    polyDataWriter.SetInput(linesPolyData)
    polyDataWriter.Write()
    #######################################
-
 #   # Read and visualize the written line
 #   #######################################
 #   reader = vtk.vtkPolyDataReader()
