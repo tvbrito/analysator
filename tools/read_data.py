@@ -500,13 +500,9 @@ def read_from_vlsv_dictionary(path, path_to_vlsv, variables, use_points, points_
          vlsvReader.optimize_open_file()
 
          for index in range(len(variables)):
-            variable = vlsvReader.read_variable( name=variables.keys()[index] , cellids=-1)
+            variable = vlsvReader.read_variable( name=variables.keys()[index] , cellids=cellids)
             
-            variable_from_desired_area=[]
-            for cell in cellids:
-               variable_from_desired_area.append(variable[cell-1]
-            
-            variables[variables.keys()[index]].append(variable_from_desired_area)
+            variables[variables.keys()[index]].append(variable)
             
 
       # Now save the files and return them
