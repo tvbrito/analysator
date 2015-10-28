@@ -36,9 +36,9 @@ import plotting as p
 
 # --- MAIN PATH --- 
 #main_path="/home/hoilijo/Documents/Projektit/msheath_antisymmetries/"
-main_path="/home/hoilijo/Documents/Projektit/dayside_rec/"
+main_path="/lustre/tmp/hoilijo/BCB/"
 
-path_to_vlsv="/home/hoilijo/Servers/lustre_alfthan/2D/BCB/bulk/"
+path_to_vlsv="/lustre/tmp/alfthan/2D/BCB/bulk/"
 # ----------------
 
 # --- DEFINE PARAMS FOR RUN --- 
