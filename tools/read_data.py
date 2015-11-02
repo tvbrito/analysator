@@ -461,7 +461,7 @@ def read_from_vlsv_dictionary(path, path_to_vlsv, variables, use_points, points_
    
 
          
-         for point_id in range(len(cell_points)-1):and the interpolate==1 is not good and not properly tested so I just use 
+         for point_id in range(len(cell_points)-1):
             
             for index in range(len(variables)):
                variable = pt.calculations.lineout(vlsvReader, point1=cell_points[point_id], point2=cell_points[point_id+1], variable=variables.keys()[index], interpolation_order=1, points=points_for_interpolation )
