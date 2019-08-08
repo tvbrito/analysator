@@ -158,6 +158,74 @@ def make_timemap(step):
 
     return (out)
 
+def get_energy_spectrum(filedir, filetype, pop, start, stop, cid, emin, emax, enum=16, fluxout=False, numproc=8):    
+
+    ''' Outputs data arrays of time/energy spectrum during time interval.
+
+    :param filedir:         Directory where files are located
+    :param filetype:        Type of file to be used [example: 'bulk']
+    :param pop:             Name of population
+    :param start:           Step for starting the data 
+    :param stop:            Step for ending the data
+    :param cid:             cellID number
+    :param emin,emax,enum:  min and max values (edges) for energy levels [keV] and number of energy bins 
+    :kword fluxout:         If True, outputs fluxes instead of PSD (Default: False)
+    :kword numproc:         Number of processes for parallelisation (default: 8)
+
+    :returns:               Tuple (time, energy, datamap) containing the time data [1-D array], the energy channels [1-D array]
+                            and the data output [2-D array] as PSD or flux.
+
+    
+    # Example usage:
+    import pytools as pt
+    data = pt.plot.get_energy_spectrum('./', 'bulk', 'proton', 0, 100, 10000, 1, 100, enum=12)
+
+    '''
+
+    global filedir_global, filetype_global, cellid_global, pop_global
+    global emin_global, emax_global, enum_global
+
+    # TODO do not use global variables, check that variables are valid
+    filedir_global = filedir
+    filetype_global = filetype
+    pop_global = pop
+    emin_global = emin
+    emax_global = emax
+    enum_global = enum
+    cellid_global = cid
+
+    datamap = np.array([])
+    time_ar = np.array([])
+
+    # Parallel construction of the spectrum
+    if __name__ == 'plot_energy':
+        pool = Pool(numproc)
+        return_array = pool.map(make_timemap, range(start,stop+1))
+    else:
+        print("Problem with parallelization")
+
+    # Creating datamap
+    for j in return_array:
+        time_ar = np.append(time_ar,j[0])
+        datamap = np.append(datamap,j[1])
+    energy_ar = return_array[0][2]
+    
+    #Serial construction of spectrum (for debugging)
+    #for step in range(start,stop+1):
+    #    func_return = make_timemap(step)
+    #    time_ar = np.append(time_ar,func_return[0])
+    #    datamap = np.append(datamap,func_return[1])
+    #energy_ar = func_return[2]
+
+    # Reshape data to an ordered 2D array that can be plotted
+    sizes=[time_ar.size,energy_ar.size]
+    if np.ndim(datamap) != 2:
+        datamap = datamap.reshape([sizes[0],sizes[1]])
+
+    datamap = np.transpose(datamap)
+
+    return (time_ar, energy_ar, datamap)
+
 
 def plot_energy_spectrum(filedir=None, filetype='bulk',
                      pop='proton',

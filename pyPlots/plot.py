@@ -39,5 +39,6 @@ import plot_helpers
 from plot_colormap import plot_colormap
 from plot_vdf import plot_vdf
 from plot_energy import plot_energy_spectrum
+from plot_energy import get_energy_spectrum
 #from line_panels import plot_timeseries
 
