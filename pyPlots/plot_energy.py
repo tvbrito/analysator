@@ -2,7 +2,7 @@ import matplotlib
 import pytools as pt
 import numpy as np
 import matplotlib.pyplot as plt
-import os
+import os, sys
 import scipy
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.colors import BoundaryNorm,LogNorm,SymLogNorm
@@ -54,6 +54,7 @@ def energy_spectrum(vlsvReader, cid, pop, emin, emax, enum=10, fluxout=False):
     # check if velocity space exists in this cell
     if vlsvReader.check_variable('fSaved'): #restart files will not have this value
         if vlsvReader.read_variable('fSaved',cid) != 1.0:
+            print('Velocity space not found for this cellID!')
             return (False,0,0)
 
     # Get velocity data
@@ -64,6 +65,7 @@ def energy_spectrum(vlsvReader, cid, pop, emin, emax, enum=10, fluxout=False):
     if(len(velcells) > 0):
         f = np.asarray(velcells.values())
     else:
+        print('Velocity space cells empty!')
         return (False,0,0)
 
     # Drop all velocity cells which are below the sparsity threshold. Otherwise the plot will show buffer cells as well.
@@ -74,7 +76,8 @@ def energy_spectrum(vlsvReader, cid, pop, emin, emax, enum=10, fluxout=False):
     if vlsvReader.check_variable('MinValue') == True:
         fMin = vlsvReader.read_variable('MinValue',cid)
     ii_f = np.where(f >= fMin)
-    if len(ii_f) < 1:
+    if len(ii_f[0]) < 1:
+        print('No velocity cells found above threshold: '+str(fMin))
         return (False,0,0)
     f_sparse = f[ii_f]
     V_sparse = V[ii_f,:][0,:,:]
@@ -109,7 +112,7 @@ def energy_spectrum(vlsvReader, cid, pop, emin, emax, enum=10, fluxout=False):
         print('emin and emax have to be positive numbers!')
     except ValueError:
         print('emin and emax have to be positive numbers!')
-    dataout = np.zeros(len(energy_bin_edges)-1)
+    dataout = np.ones(len(energy_bin_edges)-1)*1.E-30
     energyout = np.zeros_like(dataout)
 
     for c,el in enumerate(energy_bin_edges[:-1]):
@@ -119,14 +122,23 @@ def energy_spectrum(vlsvReader, cid, pop, emin, emax, enum=10, fluxout=False):
         vel_i = np.sqrt(2.*qe*1.e3*energy_i/mass)
 
         shellmask = (cell_energy > el) & (cell_energy <= energy_bin_edges[c+1])
-        if fluxout:
-            # Flux (what is measured by spacecraft) in particles/(cm2 s sr eV)
-            dataout[c] = vel_i**2/mass*np.mean(f_sparse[shellmask])*1.e-4*qe
+        
+        if all(shellmask == False):
+            print('WARNING: No cells found between bin edges ' + str(energy_bin_edges[c]) + ' and ' + str(energy_bin_edges[c+1]) )
+            print('Output for this channel will be set to 1.E-30! Consider adjusting the energy settings.')
         else:
-            # PSD average
-            dataout[c] = np.mean(f_sparse[shellmask])
+            if fluxout:
+                # Flux (what is measured by spacecraft) in particles/(cm2 s sr eV)
+                dataout[c] = vel_i**2/mass*np.mean(f_sparse[shellmask])*1.e-4*qe
+            else:
+                # PSD average
+                dataout[c] = np.mean(f_sparse[shellmask])
 
         energyout[c] = energy_i
+
+    if all(dataout==1.E-30):
+        print('WARNING: No cells found between the energy limits. Consider increasing them!')
+        print('Max, min energy = ' + str(max(cell_energy)) + ', ' + str(min(cell_energy))) 
 
     return (True, energyout, dataout )
 
@@ -138,7 +150,6 @@ def make_timemap(step):
         returns:          Time of simulation [s], energy of bins [keV] and PSD/flux for each bin
 
     '''
-
     # Getting file handle
     filename = filedir_global+filetype_global+'.'+str(step).rjust(7,'0')+'.vlsv' 
     f = pt.vlsvfile.VlsvReader(filename)
@@ -154,7 +165,7 @@ def make_timemap(step):
     out = [time, particledata, energy]
 
     if success == False:
-        print("There was a problem making the spectrum, filename: "+filename)
+        sys.exit("There was a problem making the spectrum, filename: "+filename)
 
     return (out)
 
@@ -185,6 +196,22 @@ def get_energy_spectrum(filedir, filetype, pop, start, stop, cid, emin, emax, en
     global filedir_global, filetype_global, cellid_global, pop_global
     global emin_global, emax_global, enum_global
 
+    # check if should use old version "avgs"
+    filename = filedir+filetype+'.'+str(start).rjust(7,'0')+'.vlsv' 
+    f=pt.vlsvfile.VlsvReader(filename)
+    if pop=="proton":
+       if not f.check_population(pop):
+           if f.check_population("avgs"):
+               pop="avgs"
+               print("Auto-switched to population avgs")
+           else:
+               print("Unable to detect population "+pop+" in .vlsv file!")
+               sys.exit()
+    else:
+        if not f.check_population(pop):
+            print("Unable to detect population "+pop+" in .vlsv file!")
+            sys.exit() 
+    
     # TODO do not use global variables, check that variables are valid
     filedir_global = filedir
     filetype_global = filetype
@@ -193,7 +220,7 @@ def get_energy_spectrum(filedir, filetype, pop, start, stop, cid, emin, emax, en
     emax_global = emax
     enum_global = enum
     cellid_global = cid
-
+    
     datamap = np.array([])
     time_ar = np.array([])
 
@@ -234,7 +261,7 @@ def plot_energy_spectrum(filedir=None, filetype='bulk',
                      emin=None, emax=None, enum=None,
                      colormap=None,
                      title=None,
-                     draw=None, usesci=None,
+                     draw=None, usesci=1,
                      run=None, wmark=None,
                      notre=None, thick=1.0, cbtitle=None,
                      lin=None,
@@ -247,8 +274,8 @@ def plot_energy_spectrum(filedir=None, filetype='bulk',
 
     :kword filedir:         Directory where files are located
     :kword filetype:        Type of file to be used [default = 'bulk']
-    :kword start:           Step for starting the plot
-    :kword stop:            Step for ending the plot
+    :kword start:           File number (step) for starting the plot
+    :kword stop:            File number (step) for ending the plot
     :kword outputdir:       Path to directory where output files are created (default: $HOME/Plots/)
                             If directory does not exist, it will be created. If the string does not end in a
                             forward slash, the final parti will be used as a perfix for the files.
@@ -267,7 +294,7 @@ def plot_energy_spectrum(filedir=None, filetype='bulk',
     :kword fmin,fmax:       min and max values for colour scale and colour bar of the PSD. 
 
     :kword cellcoordplot:   Coordinates of cell to be plottedd (3-D array)
-    :kword cellidplot:      cellID be plotted
+    :kword cellidplot:      cellID be plotted (list)
     :kword numproc:         Number of processes for parallelisation (default: 8)
 
     :returns:               Outputs an image to a file or to the screen.
@@ -275,7 +302,7 @@ def plot_energy_spectrum(filedir=None, filetype='bulk',
     
     # Example usage:
     import pytools as pt
-    pt.plot.plot_energy_spectrum(filedir='./', start=0, stop=100, emin=1, emax=50, enum=16, cellidplot=300100)
+    pt.plot.plot_energy_spectrum(filedir='./', start=0, stop=100, emin=1, emax=50, enum=16, cellidplot=[300100])
 
     '''
 
@@ -364,11 +391,11 @@ def plot_energy_spectrum(filedir=None, filetype='bulk',
                print("Auto-switched to population avgs")
            else:
                print("Unable to detect population "+pop+" in .vlsv file!")
-               exit()
+               sys.exit()
     else:
         if not f.check_population(pop):
             print("Unable to detect population "+pop+" in .vlsv file!")
-            exit() 
+            sys.exit() 
     pop_global = pop 
 
     #if fmin!=None and fmax!=None:
@@ -382,7 +409,7 @@ def plot_energy_spectrum(filedir=None, filetype='bulk',
         levels = MaxNLocator(nbins=255).tick_values(fmin,fmax)
         norm = BoundaryNorm(levels, ncolors=cmapuse.N, clip=True)
         ticks = np.linspace(fmin,fmax,num=7)            
-
+   
     # Select plotting back-end based on on-screen plotting or direct to file without requiring x-windowing
     if draw!=None:
         plt.switch_backend('TkAgg')
