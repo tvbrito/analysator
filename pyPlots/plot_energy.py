@@ -487,8 +487,8 @@ def plot_energy_spectrum(filedir=None, filetype='bulk',
 
 
     # Limit ticks, slightly according to ratio
-    ax1.xaxis.set_major_locator(plt.MaxNLocator(int(7/np.sqrt(ratio))))
-    ax1.yaxis.set_major_locator(plt.MaxNLocator(int(7*np.sqrt(ratio))))
+    #ax1.xaxis.set_major_locator(plt.MaxNLocator(int(7/np.sqrt(ratio))))
+    #ax1.yaxis.set_major_locator(plt.MaxNLocator(int(7*np.sqrt(ratio))))
 
     # Colourbar title
     cbtitle = 'Flux\n [1/cm$^2$/s/sr/eV]'
