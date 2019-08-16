@@ -341,7 +341,8 @@ def plot_energy_spectrum(filedir=None, filetype='bulk',
         usesci=1
     
     if colormap==None:
-        colormap="YlOrRd"
+        #colormap="YlOrRd"
+        colormap="hot_desaturated"
     cmapuse=matplotlib.cm.get_cmap(name=colormap)
 
     fontsize=8 # Most text
