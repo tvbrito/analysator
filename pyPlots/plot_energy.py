@@ -159,6 +159,7 @@ def make_timemap(step):
     (success, energy, particledata) = energy_spectrum(f, cellid_global, pop_global, emin_global, emax_global, enum=enum_global)
 
     time = f.read_parameter("time")
+    # TODO: I think this time change is already accounted for in the read_parameter function
     if time is None:      # in BCH, at some point "t" was changed to "time"
         time = f.read_parameter("t")
 
@@ -370,7 +371,10 @@ def plot_energy_spectrum(filedir=None, filetype='bulk',
         return
 
     # Plot title
-    plot_title = ''       
+    if title==None:
+        plot_title = ''
+    else:
+        plot_title = title
 
     # stepstr, used for file name
     stepstr = '_t'+str(np.int(tstart))+'s'
@@ -471,7 +475,7 @@ def plot_energy_spectrum(filedir=None, filetype='bulk',
     ax1.set_yscale("log")
 
     # Title and plot limits
-    #ax1.set_title(plot_title,fontsize=fontsize2,fontweight='bold')
+    ax1.set_title(plot_title,fontsize=fontsize2,fontweight='bold')
     plt.xlim([time_ar[0],time_ar[-1]])
     plt.ylim([emin,emax])
 
