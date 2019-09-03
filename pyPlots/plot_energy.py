@@ -28,7 +28,7 @@ plt.register_cmap(name='magma_r', cmap=matplotlib.colors.ListedColormap(cmaps.ma
 global filedir_global, filetype_global 
 global cellid_global
 global emin_global, emax_global, enum_global
-global pop_global 
+global pop_global, plotE_global 
 
 
 # Different style scientific format for colour bar ticks
@@ -38,7 +38,7 @@ def fmt(x, pos):
     return r'${}\times10^{{{}}}$'.format(a, b)
 
 
-def energy_spectrum(vlsvReader, cid, pop, emin, emax, enum=10, fluxout=False):
+def energy_spectrum(vlsvReader, cid, pop, emin, emax, enum=10, fluxout=False, plotE=False):
     ''' Calculates the energy spectrum of a single file at a single cellid
         
         param: vlsvReader         vlsvReader handle
@@ -98,6 +98,14 @@ def energy_spectrum(vlsvReader, cid, pop, emin, emax, enum=10, fluxout=False):
 
     qe = 1.602177e-19 # C
 
+    # Add a line plot of the plasma energy if selected
+    if plotE == True:
+        if pop == 'avgs':
+            Vbulk = np.linalg.norm(vlsvReader.read_variable('V', cid))
+        else:
+            Vbulk = np.linalg.norm(vlsvReader.read_variable(pop+'/V', cid))
+        plasmaE = 0.5*mass*Vbulk**2/qe/1.e3 # plasma energy in keV (Non-relativistic)
+
     # Calculate energy
     VX = V_sparse[:,0]
     VY = V_sparse[:,1]
@@ -112,8 +120,13 @@ def energy_spectrum(vlsvReader, cid, pop, emin, emax, enum=10, fluxout=False):
         print('emin and emax have to be positive numbers!')
     except ValueError:
         print('emin and emax have to be positive numbers!')
-    dataout = np.ones(len(energy_bin_edges)-1)*1.E-30
-    energyout = np.zeros_like(dataout)
+    if plotE == True: # Add the plasma energy to the end of the dataout array
+        dataout = np.ones(len(energy_bin_edges))*1.E-30
+        dataout[-1] = plasmaE
+    else:
+        dataout = np.ones(len(energy_bin_edges)-1)*1.E-30
+
+    energyout = np.ones(len(energy_bin_edges)-1)
 
     for c,el in enumerate(energy_bin_edges[:-1]):
         # Energy in the middle of the bin [keV]
@@ -156,7 +169,7 @@ def make_timemap(step):
     print(filename + " is being processed...")
 
     # Getting energy spectrum data
-    (success, energy, particledata) = energy_spectrum(f, cellid_global, pop_global, emin_global, emax_global, enum=enum_global)
+    (success, energy, particledata) = energy_spectrum(f, cellid_global, pop_global, emin_global, emax_global, enum=enum_global, plotE=plotE_global)
 
     time = f.read_parameter("time")
     # TODO: I think this time change is already accounted for in the read_parameter function
@@ -260,6 +273,7 @@ def plot_energy_spectrum(filedir=None, filetype='bulk',
                      start=1, stop=20,
                      outputdir=None,
                      emin=None, emax=None, enum=None,
+                     plotE=None,
                      colormap=None,
                      title=None,
                      draw=None, usesci=1,
@@ -281,7 +295,8 @@ def plot_energy_spectrum(filedir=None, filetype='bulk',
                             If directory does not exist, it will be created. If the string does not end in a
                             forward slash, the final parti will be used as a perfix for the files.
 
-    :kword emin,emax,enum:  min and max values (edges) for energy levels [keV] and number of energy bins 
+    :kword emin,emax,enum:  min and max values (edges) for energy levels [keV] and number of energy bins
+    :kword plotE:           Plots an overlaid line plot of the plasma energy 
     :kword colormap:        colour scale for plot, use e.g. jet, viridis, plasma, inferno, magma, nipy_spectral, RdBu
     :kword title:           string to use as title instead of map name
     :kword draw:            Draw image on-screen instead of saving to file (requires x-windowing)
@@ -308,7 +323,7 @@ def plot_energy_spectrum(filedir=None, filetype='bulk',
     '''
 
     global filedir_global, filetype_global, cellid_global, pop_global
-    global emin_global, emax_global, enum_global
+    global emin_global, emax_global, enum_global, plotE_global
 
     # TODO do not use global variables, check that variables are valid
     filedir_global=filedir
@@ -316,6 +331,10 @@ def plot_energy_spectrum(filedir=None, filetype='bulk',
     emin_global=emin
     emax_global=emax
     enum_global=enum
+    if not plotE == None: 
+        plotE_global = True
+    else:
+        plotE_global = False
 
     # Verify the location of this watermark image
     watermarkimage=os.path.join(os.path.dirname(__file__), 'logo_color.png')
@@ -452,7 +471,10 @@ def plot_energy_spectrum(filedir=None, filetype='bulk',
     #energy = func_return[2]
 
     # Reshape data to an ordered 2D array that can be plotted
-    sizes=[time_ar.size,energy.size]
+    if plotE_global == True:
+        sizes=[time_ar.size,energy.size+1]
+    else:
+        sizes=[time_ar.size,energy.size]
     if np.ndim(datamap) != 2:
         datamap = datamap.reshape([sizes[0],sizes[1]])
 
@@ -469,7 +491,11 @@ def plot_energy_spectrum(filedir=None, filetype='bulk',
     # Note, datamap is still of shape [ysize,xsize] (?)
     [XmeshXY,YmeshXY] = scipy.meshgrid(time_ar,energy)
 
-    fig1 = plt.pcolormesh(XmeshXY,YmeshXY,datamap, cmap=colormap,norm=norm)
+    if plotE_global == True:
+        fig1 = plt.pcolormesh(XmeshXY,YmeshXY,datamap[:-1,:], cmap=colormap,norm=norm)
+        plt.plot(time_ar,datamap[-1,:], '--w', linewidth=2)
+    else:
+        fig1 = plt.pcolormesh(XmeshXY,YmeshXY,datamap, cmap=colormap,norm=norm)
     ax1 = plt.gca()
 
     ax1.set_yscale("log")
